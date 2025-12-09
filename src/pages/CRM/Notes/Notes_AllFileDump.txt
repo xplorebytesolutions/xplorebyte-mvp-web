@@ -1,0 +1,369 @@
+Folder and File Content Report
+Root folder: D:\xbytechat\xbytechat-ui\src\pages\Notes
+Generated at: 02-12-2025 12:17:40.02
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Notes\NoteForm.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import axiosClient from "../../api/axiosClient"; // ✅ Add this for timeline entry
+import { toast } from "react-toastify";
+
+function NoteForm({ contactId, selectedNote, onSaveComplete }) {
+  const [formData, setFormData] = useState({
+    contactId: contactId,
+    title: "",
+    content: "",
+    source: "Manual",
+    createdBy: "Admin", // Later: pull from auth
+    isPinned: false,
+    isInternal: false,
+  });
+
+  useEffect(() => {
+    if (selectedNote) {
+      setFormData({ ...selectedNote });
+    } else {
+      setFormData({
+        contactId: contactId,
+        title: "",
+        content: "",
+        source: "Manual",
+        createdBy: "Admin",
+        isPinned: false,
+        isInternal: false,
+      });
+    }
+  }, [selectedNote, contactId]);
+
+  const handleChange = e => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    try {
+      const payload = { ...formData, contactId };
+
+      if (selectedNote?.id) {
+        await axios.put(`/api/notes/${selectedNote.id}`, payload);
+        toast.info("📝 Note updated.");
+      } else {
+        await axios.post("/api/notes", payload);
+        toast.success("✅ Note added.");
+      }
+
+      // ✅ Auto-log to timeline
+      try {
+        await axiosClient.post("/leadtimeline", {
+          contactId,
+          eventType: "NoteAdded",
+          description: `Note titled '${payload.title}' was ${
+            selectedNote ? "updated" : "added"
+          }.`,
+          createdBy: payload.createdBy,
+          source: "Note",
+          category: "Manual",
+          isSystemGenerated: true,
+        });
+      } catch (timelineErr) {
+        console.warn("Timeline log failed:", timelineErr);
+      }
+
+      onSaveComplete();
+    } catch (err) {
+      console.error("❌ Failed to save note:", err);
+      toast.error("Failed to save note.");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <input
+        name="title"
+        value={formData.title}
+        onChange={handleChange}
+        placeholder="Note Title"
+        className="w-full border rounded-lg px-3 py-2"
+      />
+      <textarea
+        name="content"
+        value={formData.content}
+        onChange={handleChange}
+        placeholder="Write your note here..."
+        rows={5}
+        className="w-full border rounded-lg px-3 py-2"
+      />
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            name="isPinned"
+            checked={formData.isPinned}
+            onChange={handleChange}
+            className="mr-2"
+          />
+          Pin Note
+        </label>
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            name="isInternal"
+            checked={formData.isInternal}
+            onChange={handleChange}
+            className="mr-2"
+          />
+          Internal Only
+        </label>
+      </div>
+      <button
+        type="submit"
+        className="bg-purple-600 text-white px-4 py-2 rounded-lg"
+      >
+        {selectedNote ? "Update Note" : "Add Note"}
+      </button>
+    </form>
+  );
+}
+
+export default NoteForm;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Notes\NoteList.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState, useCallback } from "react";
+import axios from "axios";
+
+function NoteList({ contactId, onEdit, refreshKey }) {
+  const [notes, setNotes] = useState([]);
+
+  // 🟢 Wrap fetchNotes in useCallback so its identity is stable across renders
+  const fetchNotes = useCallback(async () => {
+    if (!contactId) return;
+    try {
+      const res = await axios.get(`/api/notes/contact/${contactId}`);
+      setNotes(res.data);
+    } catch (err) {
+      console.error("❌ Failed to fetch notes:", err);
+    }
+  }, [contactId]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes, refreshKey]); // useCallback ensures fetchNotes is stable
+
+  const handleDelete = async id => {
+    if (!window.confirm("Delete this note?")) return;
+    try {
+      await axios.delete(`/api/notes/${id}`);
+      fetchNotes();
+    } catch (err) {
+      console.error("❌ Failed to delete note:", err);
+    }
+  };
+
+  return (
+    <div className="grid gap-4">
+      {notes.length === 0 && (
+        <div className="text-gray-500 text-center py-6">
+          No notes found for this contact.
+        </div>
+      )}
+
+      {notes.map(note => (
+        <div
+          key={note.id}
+          className={`border p-4 rounded-xl shadow-sm relative bg-white hover:shadow-md transition-all ${
+            note.isPinned ? "border-purple-500" : "border-gray-200"
+          }`}
+        >
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-lg text-purple-700 flex gap-2 items-center">
+              {note.title || "Untitled"}
+              {note.isPinned && (
+                <span title="Pinned" className="text-purple-500">
+                  📌
+                </span>
+              )}
+              {note.isInternal && (
+                <span title="Internal Note" className="text-gray-400">
+                  🔒
+                </span>
+              )}
+            </h3>
+            <div className="flex gap-2 text-sm">
+              <button
+                onClick={() => onEdit(note)}
+                className="text-blue-600 hover:underline"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(note.id)}
+                className="text-red-500 hover:underline"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+          <p className="text-sm text-gray-800 mt-2 whitespace-pre-line">
+            {note.content}
+          </p>
+          <div className="text-xs text-gray-500 mt-3">
+            Created by <b>{note.createdBy}</b> ·{" "}
+            {new Date(note.createdAt).toLocaleString()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default NoteList;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Notes\Notes.jsx 
+====================================================== 
+ 
+import React, { useState } from "react";
+import NoteForm from "./NoteForm";
+import NoteList from "./NoteList";
+
+function Notes({ contactId }) {
+  const [selectedNote, setSelectedNote] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleEdit = note => {
+    setSelectedNote(note);
+    setIsDrawerOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedNote(null);
+    setIsDrawerOpen(true);
+  };
+
+  const handleSaveComplete = () => {
+    setSelectedNote(null);
+    setIsDrawerOpen(false);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  return (
+    <div className="p-4 relative">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-semibold text-purple-700">📝 Notes</h2>
+        <button
+          onClick={handleAddNew}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg shadow"
+        >
+          ➕ Add Note
+        </button>
+      </div>
+
+      {/* Note List */}
+      <NoteList
+        contactId={contactId}
+        onEdit={handleEdit}
+        refreshKey={refreshKey}
+      />
+
+      {/* Drawer */}
+      {isDrawerOpen && (
+        <div className="fixed top-0 right-0 w-full max-w-md h-full bg-white shadow-2xl z-50 transition-transform duration-300 border-l overflow-y-auto">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-bold">
+              {selectedNote ? "Edit Note" : "Add Note"}
+            </h2>
+            <button
+              onClick={() => setIsDrawerOpen(false)}
+              className="text-gray-500 text-xl"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-4">
+            <NoteForm
+              contactId={contactId}
+              selectedNote={selectedNote}
+              onSaveComplete={handleSaveComplete}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Notes;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Notes\NotesWrapper.jsx 
+====================================================== 
+ 
+import { useParams } from "react-router-dom";
+import Notes from "./Notes";
+
+function NotesWrapper() {
+  const { contactId } = useParams();
+  return <Notes contactId={contactId} />;
+}
+
+export default NotesWrapper;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Notes\MakeDump.bat 
+====================================================== 
+ 
+@echo off
+REM This script will find relevant source files and output their names and contents into one file.
+REM The output file will be named [FolderName]_AllFileDump.txt.
+
+REM Get the current folder's name and set it as the output file name with the custom suffix
+for %%I in ("%cd%") do set "outputFile=%%~nI_AllFileDump.txt"
+
+REM Clear the output file to start fresh and write a small header
+> "%outputFile%" (
+    echo Folder and File Content Report
+    echo Root folder: %cd%
+    echo Generated at: %date% %time%
+)
+echo. >> "%outputFile%"
+
+REM NOTE:
+REM We now only dump RELEVANT text/code files (no binaries, no images, no node_modules, etc.)
+REM This keeps the file smaller and much easier to review.
+
+REM Loop through all relevant files in the current directory and subdirectories
+REM Extensions included: C#, JS/TS/React, JSON, config, SQL, Markdown, YAML
+for /R . %%F in (*.cs *.csproj *.jsx *.tsx *.js *.ts *.json *.config *.sql *.md *.yml *.yaml *.bat) do (
+
+    REM Skip some noisy folders by path substring (node_modules, bin, obj, .git, dist, .vs)
+    echo "%%F" | findstr /I /C:"\node_modules\" /C:"\bin\" /C:"\obj\" /C:"\.git\" /C:"\dist\" /C:"\.vs\" >nul
+    if errorlevel 1 (
+        echo ====================================================== >> "%outputFile%"
+        echo FILE: %%F >> "%outputFile%"
+        echo ====================================================== >> "%outputFile%"
+        echo. >> "%outputFile%"
+        type "%%F" >> "%outputFile%" 2>nul
+        echo. >> "%outputFile%"
+        echo. >> "%outputFile%"
+    )
+)
+
+echo Finished! All content has been extracted to %outputFile%
+ 
+ 

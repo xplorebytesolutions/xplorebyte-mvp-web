@@ -1,0 +1,436 @@
+Folder and File Content Report
+Root folder: D:\xbytechat\xbytechat-ui\src\pages\Reminders
+Generated at: 02-12-2025 12:18:05.85
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Reminders\ReminderForm.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import axiosClient from "../../api/axiosClient"; // ✅ for timeline logging
+import { toast } from "react-toastify";
+
+function ReminderForm({ selectedReminder, onSaveComplete }) {
+  const [formData, setFormData] = useState({
+    contactId: "3fa85f64-5717-4562-b3fc-2c963f66afa6", // Will be dynamic later
+    title: "",
+    description: "",
+    dueAt: "",
+    reminderType: "",
+    priority: 2,
+    isRecurring: false,
+    recurrencePattern: "",
+    sendWhatsappNotification: false,
+    linkedCampaign: "",
+    status: "Pending",
+  });
+
+  useEffect(() => {
+    if (selectedReminder) {
+      setFormData({ ...selectedReminder });
+    } else {
+      setFormData({
+        contactId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        title: "",
+        description: "",
+        dueAt: "",
+        reminderType: "",
+        priority: 2,
+        isRecurring: false,
+        recurrencePattern: "",
+        sendWhatsappNotification: false,
+        linkedCampaign: "",
+        status: "Pending",
+      });
+    }
+  }, [selectedReminder]);
+
+  const handleChange = e => {
+    const { name, value, type, checked } = e.target;
+    const val = type === "checkbox" ? checked : value;
+    setFormData(prev => ({ ...prev, [name]: val }));
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+
+    try {
+      let isNew = false;
+
+      if (selectedReminder?.id) {
+        await axios.put(`/api/reminders/${selectedReminder.id}`, formData);
+        toast.info("🔄 Reminder updated.");
+      } else {
+        await axios.post("/api/reminders", formData);
+        toast.success("✅ Reminder added.");
+        isNew = true;
+      }
+
+      // ✅ Auto-log to timeline
+      try {
+        const { title, dueAt, priority, contactId } = formData;
+
+        const priorityLabel =
+          {
+            1: "High",
+            2: "Medium",
+            3: "Low",
+          }[priority] || "Medium";
+
+        const formattedDate = new Date(dueAt).toLocaleString();
+
+        await axiosClient.post("/leadtimeline", {
+          contactId,
+          eventType: "ReminderSet",
+          description: `Reminder titled '${title}' ${
+            isNew ? "added" : "updated"
+          } for ${formattedDate} with priority ${priorityLabel}.`,
+          createdBy: "System",
+          source: "Reminder",
+          category: "Auto",
+          isSystemGenerated: true,
+        });
+      } catch (timelineErr) {
+        console.warn("⚠️ Timeline log failed:", timelineErr);
+      }
+
+      onSaveComplete();
+    } catch (err) {
+      if (err.response) {
+        console.error("📦 Backend error response:", err.response.data);
+      } else {
+        console.error("❌ Unknown error while saving reminder:", err);
+      }
+      toast.error("❌ Failed to save reminder.");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <input
+        name="title"
+        value={formData.title}
+        onChange={handleChange}
+        placeholder="Reminder Title"
+        className="w-full border rounded-lg px-3 py-2"
+        required
+      />
+      <textarea
+        name="description"
+        value={formData.description}
+        onChange={handleChange}
+        placeholder="Description"
+        className="w-full border rounded-lg px-3 py-2"
+      />
+      <input
+        type="datetime-local"
+        name="dueAt"
+        value={formData.dueAt}
+        onChange={handleChange}
+        className="w-full border rounded-lg px-3 py-2"
+        required
+      />
+      <input
+        name="reminderType"
+        value={formData.reminderType}
+        onChange={handleChange}
+        placeholder="Type (e.g., Call, Email)"
+        className="w-full border rounded-lg px-3 py-2"
+      />
+      <select
+        name="priority"
+        value={formData.priority}
+        onChange={handleChange}
+        className="w-full border rounded-lg px-3 py-2"
+      >
+        <option value={1}>High</option>
+        <option value={2}>Medium</option>
+        <option value={3}>Low</option>
+      </select>
+      <div className="flex gap-4 flex-wrap">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            name="isRecurring"
+            checked={formData.isRecurring}
+            onChange={handleChange}
+            className="mr-2"
+          />
+          Recurring
+        </label>
+        <input
+          name="recurrencePattern"
+          value={formData.recurrencePattern}
+          onChange={handleChange}
+          placeholder="e.g., Weekly"
+          className="flex-1 border rounded-lg px-3 py-2"
+        />
+      </div>
+      <label className="flex items-center">
+        <input
+          type="checkbox"
+          name="sendWhatsappNotification"
+          checked={formData.sendWhatsappNotification}
+          onChange={handleChange}
+          className="mr-2"
+        />
+        Send WhatsApp Notification
+      </label>
+      <button
+        type="submit"
+        className="bg-purple-600 text-white px-4 py-2 rounded-lg"
+      >
+        {selectedReminder ? "Update Reminder" : "Add Reminder"}
+      </button>
+    </form>
+  );
+}
+
+export default ReminderForm;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Reminders\ReminderList.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+
+function ReminderList({ onEdit, refreshKey }) {
+  const [reminders, setReminders] = useState([]);
+
+  useEffect(() => {
+    fetchReminders();
+  }, [refreshKey]);
+
+  const fetchReminders = async () => {
+    try {
+      const res = await axios.get("/api/reminders");
+      setReminders(res.data);
+    } catch (err) {
+      console.error("❌ Failed to fetch reminders:", err);
+    }
+  };
+
+  const handleDelete = async id => {
+    const confirmDelete = window.confirm("Delete this reminder?");
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`/api/reminders/${id}`);
+      fetchReminders();
+    } catch (err) {
+      console.error("❌ Failed to delete reminder:", err);
+    }
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border text-left rounded-lg">
+        <thead className="bg-gray-100 text-sm font-semibold">
+          <tr>
+            <th className="p-2">Title</th>
+            <th className="p-2">Due At</th>
+            <th className="p-2">Status</th>
+            <th className="p-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reminders.map(reminder => (
+            <tr key={reminder.id} className="border-t">
+              <td className="p-2">{reminder.title}</td>
+              <td className="p-2">
+                {new Date(reminder.dueAt).toLocaleString()}
+              </td>
+              <td className="p-2">{reminder.status}</td>
+              <td className="p-2 flex gap-2">
+                <button
+                  onClick={() => onEdit(reminder)}
+                  className="px-2 py-1 text-sm bg-blue-500 text-white rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(reminder.id)}
+                  className="px-2 py-1 text-sm bg-red-500 text-white rounded"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+          {reminders.length === 0 && (
+            <tr>
+              <td colSpan="4" className="text-center py-4 text-gray-500">
+                No reminders found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export default ReminderList;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Reminders\Reminders.jsx 
+====================================================== 
+ 
+import React, { useState } from "react";
+import ReminderForm from "./ReminderForm";
+import ReminderList from "./ReminderList";
+
+function Reminders() {
+  const [selectedReminder, setSelectedReminder] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const handleEdit = reminder => {
+    setSelectedReminder(reminder);
+    setIsDrawerOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedReminder(null);
+    setIsDrawerOpen(true);
+  };
+
+  const handleSaveComplete = () => {
+    setIsDrawerOpen(false);
+    setSelectedReminder(null);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  return (
+    <div className="p-4 relative">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-semibold">Reminders</h2>
+        <button
+          onClick={handleAddNew}
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg"
+        >
+          ➕ Add Reminder
+        </button>
+      </div>
+
+      {/* Reminder Cards */}
+      <ReminderList onEdit={handleEdit} refreshKey={refreshKey} />
+
+      {/* Drawer */}
+      {isDrawerOpen && (
+        <div className="fixed top-0 right-0 w-full max-w-md h-full bg-white shadow-2xl z-50 transition-transform duration-300 border-l overflow-y-auto">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-bold">
+              {selectedReminder ? "Edit Reminder" : "Add Reminder"}
+            </h2>
+            <button
+              onClick={() => setIsDrawerOpen(false)}
+              className="text-gray-500 text-xl"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-4">
+            <ReminderForm
+              selectedReminder={selectedReminder}
+              onSaveComplete={handleSaveComplete}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Reminders;
+
+// import React, { useState } from "react";
+// import ReminderForm from "./ReminderForm";
+// import ReminderList from "./ReminderList";
+
+// function Reminders() {
+//   const [selectedReminder, setSelectedReminder] = useState(null);
+//   const [refreshKey, setRefreshKey] = useState(0); // used to refresh list
+
+//   const handleEdit = reminder => {
+//     setSelectedReminder(reminder);
+//   };
+
+//   const handleSaveComplete = () => {
+//     setSelectedReminder(null);
+//     setRefreshKey(prev => prev + 1);
+//   };
+
+//   return (
+//     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+//       {/* Left: Form */}
+//       <div className="bg-white rounded-2xl shadow-md p-4">
+//         <h2 className="text-xl font-semibold mb-2">
+//           {selectedReminder ? "Edit Reminder" : "Add Reminder"}
+//         </h2>
+//         <ReminderForm
+//           selectedReminder={selectedReminder}
+//           onSaveComplete={handleSaveComplete}
+//         />
+//       </div>
+
+//       {/* Right: List */}
+//       <div className="bg-white rounded-2xl shadow-md p-4">
+//         <h2 className="text-xl font-semibold mb-2">Reminder List</h2>
+//         <ReminderList onEdit={handleEdit} refreshKey={refreshKey} />
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default Reminders;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Reminders\MakeDump.bat 
+====================================================== 
+ 
+@echo off
+REM This script will find relevant source files and output their names and contents into one file.
+REM The output file will be named [FolderName]_AllFileDump.txt.
+
+REM Get the current folder's name and set it as the output file name with the custom suffix
+for %%I in ("%cd%") do set "outputFile=%%~nI_AllFileDump.txt"
+
+REM Clear the output file to start fresh and write a small header
+> "%outputFile%" (
+    echo Folder and File Content Report
+    echo Root folder: %cd%
+    echo Generated at: %date% %time%
+)
+echo. >> "%outputFile%"
+
+REM NOTE:
+REM We now only dump RELEVANT text/code files (no binaries, no images, no node_modules, etc.)
+REM This keeps the file smaller and much easier to review.
+
+REM Loop through all relevant files in the current directory and subdirectories
+REM Extensions included: C#, JS/TS/React, JSON, config, SQL, Markdown, YAML
+for /R . %%F in (*.cs *.csproj *.jsx *.tsx *.js *.ts *.json *.config *.sql *.md *.yml *.yaml *.bat) do (
+
+    REM Skip some noisy folders by path substring (node_modules, bin, obj, .git, dist, .vs)
+    echo "%%F" | findstr /I /C:"\node_modules\" /C:"\bin\" /C:"\obj\" /C:"\.git\" /C:"\dist\" /C:"\.vs\" >nul
+    if errorlevel 1 (
+        echo ====================================================== >> "%outputFile%"
+        echo FILE: %%F >> "%outputFile%"
+        echo ====================================================== >> "%outputFile%"
+        echo. >> "%outputFile%"
+        type "%%F" >> "%outputFile%" 2>nul
+        echo. >> "%outputFile%"
+        echo. >> "%outputFile%"
+    )
+)
+
+echo Finished! All content has been extracted to %outputFile%
+ 
+ 

@@ -1,0 +1,2740 @@
+Folder and File Content Report
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\ContactForm.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState } from "react";
+import axiosClient from "../../api/axiosClient"; // Corrected import
+import { toast } from "react-toastify";
+
+function ContactForm({ contact, onSaveComplete }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    phoneNumber: "",
+    email: "",
+    leadSource: "",
+    notes: "",
+    tags: [], // Array of tag IDs
+    // Date fields are handled separately to avoid timezone issues
+  });
+  const [allTags, setAllTags] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch all available tags when the component mounts
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await axiosClient.get("/tags");
+        setAllTags(response.data.data || response.data); // Handle wrapper if it exists
+      } catch (error) {
+        console.error("Failed to load tags:", error);
+        toast.error("❌ Failed to load tags");
+      }
+    };
+    fetchTags();
+  }, []);
+
+  // Populate the form when an existing contact is passed in
+  useEffect(() => {
+    if (contact) {
+      setFormData({
+        name: contact.name || "",
+        phoneNumber: contact.phoneNumber || "",
+        email: contact.email || "",
+        leadSource: contact.leadSource || "",
+        notes: contact.notes || "",
+        tags: contact.tags?.map(t => t.tagId) || [],
+      });
+    }
+  }, [contact]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleTagChange = e => {
+    const selected = Array.from(e.target.selectedOptions, opt => opt.value);
+    setFormData(prev => ({ ...prev, tags: selected }));
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setSaving(true);
+
+    // Backend expects an array of Guids/strings for the tag IDs
+    const payload = {
+      ...formData,
+      tagIds: formData.tags, // Send just the array of IDs
+    };
+
+    try {
+      if (contact?.id) {
+        // Update existing contact
+        await axiosClient.put(`/contacts/${contact.id}`, payload);
+        toast.success("✅ Contact updated successfully!");
+      } else {
+        // Create new contact
+        await axiosClient.post("/contacts", payload);
+        toast.success("✅ Contact created successfully!");
+      }
+      onSaveComplete?.(); // Notify parent component to refresh/close
+    } catch (err) {
+      // Display the specific error message from the backend
+      const errorMessage =
+        err.response?.data?.message || "❌ Failed to save contact.";
+      toast.error(errorMessage);
+      console.error("Save contact failed:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        required
+        placeholder="Name"
+        className="w-full border px-3 py-2 rounded-md"
+      />
+      <input
+        name="phoneNumber"
+        value={formData.phoneNumber}
+        onChange={handleChange}
+        placeholder="Phone Number"
+        className="w-full border px-3 py-2 rounded-md"
+      />
+      <input
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        placeholder="Email"
+        className="w-full border px-3 py-2 rounded-md"
+      />
+
+      <div>
+        <label className="text-sm text-gray-600">Tags</label>
+        <select
+          multiple
+          value={formData.tags}
+          onChange={handleTagChange}
+          className="w-full border px-3 py-2 rounded-md h-24"
+        >
+          {allTags.map(tag => (
+            <option key={tag.id} value={tag.id}>
+              {tag.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <textarea
+        name="notes"
+        value={formData.notes}
+        onChange={handleChange}
+        placeholder="Notes..."
+        className="w-full border px-3 py-2 rounded-md"
+        rows={3}
+      />
+
+      <button
+        type="submit"
+        disabled={saving}
+        className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 disabled:bg-purple-300"
+      >
+        {saving ? "Saving..." : contact?.id ? "Update Contact" : "Add Contact"}
+      </button>
+    </form>
+  );
+}
+
+export default ContactForm;
+
+// import React, { useEffect, useState } from "react";
+// import axios from "axios";
+// import { toast } from "react-toastify";
+
+// function ContactForm({ contact, onSaveComplete }) {
+//   const [formData, setFormData] = useState({
+//     name: "",
+//     phoneNumber: "",
+//     email: "",
+//     leadSource: "",
+//     notes: "",
+//     lastContactedAt: "",
+//     nextFollowUpAt: "",
+//     tags: [], // Now array of tag IDs
+//   });
+
+//   const [allTags, setAllTags] = useState([]);
+
+//   useEffect(() => {
+//     // Load all tags from DB
+//     axios
+//       .get("/api/tags")
+//       .then(res => setAllTags(res.data))
+//       .catch(() => toast.error("❌ Failed to load tags"));
+//   }, []);
+
+//   useEffect(() => {
+//     if (contact) {
+//       setFormData({
+//         name: contact.name || "",
+//         phoneNumber: contact.phoneNumber || "",
+//         email: contact.email || "",
+//         leadSource: contact.leadSource || "",
+//         notes: contact.notes || "",
+//         lastContactedAt: contact.lastContactedAt || "",
+//         nextFollowUpAt: contact.nextFollowUpAt || "",
+//         tags: contact.tags?.map(t => t.tagId) || [],
+//       });
+//     }
+//   }, [contact]);
+
+//   const handleChange = e => {
+//     const { name, value } = e.target;
+//     setFormData(prev => ({ ...prev, [name]: value }));
+//   };
+
+//   const handleTagChange = e => {
+//     const selected = Array.from(e.target.selectedOptions, opt => opt.value);
+//     setFormData(prev => ({ ...prev, tags: selected }));
+//   };
+
+//   const handleSubmit = async e => {
+//     e.preventDefault();
+
+//     const mappedTags = formData.tags.map(id => {
+//       const tag = allTags.find(t => t.id === id);
+//       return { tagId: tag.id, tagName: tag.name };
+//     });
+
+//     const payload = {
+//       ...formData,
+//       tags: mappedTags,
+//     };
+
+//     try {
+//       if (contact?.id) {
+//         await axios.put(`/contacts/${contact.id}`, payload);
+//         toast.success("✅ Contact updated");
+//       } else {
+//         await axios.post("/contacts", payload);
+//         toast.success("✅ Contact added");
+//       }
+
+//       onSaveComplete?.();
+//     } catch (err) {
+//       console.error(err);
+//       toast.error("❌ Failed to save contact");
+//     }
+//   };
+
+//   return (
+//     <form onSubmit={handleSubmit} className="space-y-3">
+//       <input
+//         name="name"
+//         value={formData.name}
+//         onChange={handleChange}
+//         required
+//         placeholder="Name"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         name="phoneNumber"
+//         value={formData.phoneNumber}
+//         onChange={handleChange}
+//         required
+//         placeholder="Phone"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         name="email"
+//         value={formData.email}
+//         onChange={handleChange}
+//         placeholder="Email"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         name="leadSource"
+//         value={formData.leadSource}
+//         onChange={handleChange}
+//         placeholder="Lead Source"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+
+//       {/* ✅ Tag Select */}
+//       <select
+//         multiple
+//         value={formData.tags}
+//         onChange={handleTagChange}
+//         className="w-full border px-3 py-2 rounded"
+//       >
+//         {allTags.map(tag => (
+//           <option key={tag.id} value={tag.id}>
+//             {tag.name}
+//           </option>
+//         ))}
+//       </select>
+
+//       <input
+//         type="datetime-local"
+//         name="lastContactedAt"
+//         value={formData.lastContactedAt}
+//         onChange={handleChange}
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         type="datetime-local"
+//         name="nextFollowUpAt"
+//         value={formData.nextFollowUpAt}
+//         onChange={handleChange}
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <textarea
+//         name="notes"
+//         value={formData.notes}
+//         onChange={handleChange}
+//         placeholder="Notes"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+
+//       <button
+//         type="submit"
+//         className="bg-purple-600 text-white px-4 py-2 rounded"
+//       >
+//         {contact?.id ? "Update Contact" : "Add Contact"}
+//       </button>
+//     </form>
+//   );
+// }
+
+// export default ContactForm;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\ContactList.jsx 
+====================================================== 
+ 
+import React from "react";
+import { FaEllipsisV } from "react-icons/fa";
+
+function getInitials(name) {
+  if (!name) return "";
+  const parts = name.trim().split(" ");
+  return parts
+    .slice(0, 2)
+    .map(word => word[0])
+    .join("")
+    .toUpperCase();
+}
+
+export default function ContactList({
+  contacts,
+  onEdit,
+  onDelete,
+  onNotes,
+  onTimeline,
+}) {
+  return (
+    <div className="overflow-x-auto mt-4 rounded-xl border shadow-sm">
+      <table className="min-w-full bg-white">
+        <thead className="text-left bg-gray-100 text-sm font-medium">
+          <tr>
+            <th className="px-4 py-3">Name</th>
+            <th className="px-4 py-3">Phone</th>
+            <th className="px-4 py-3">Tags</th>
+            <th className="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="text-sm">
+          {contacts.map(contact => (
+            <tr key={contact.id} className="border-t hover:bg-gray-50">
+              <td className="px-4 py-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shadow-sm">
+                  {getInitials(contact.name)}
+                </div>
+                <span className="font-semibold">{contact.name}</span>
+              </td>
+
+              <td className="px-4 py-3 text-gray-700">
+                {contact.phoneNumber || (
+                  <span className="text-gray-400 italic">No number</span>
+                )}
+              </td>
+
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-1">
+                  {(contact.tags ?? contact.contactTags ?? []).length > 0 ? (
+                    (contact.tags ?? contact.contactTags).map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-0.5 text-xs rounded-full font-medium"
+                        style={{
+                          backgroundColor: tag.colorHex || "#EEE",
+                          color: "#1F2937",
+                        }}
+                      >
+                        {tag.tagName || tag.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">
+                      No tags
+                    </span>
+                  )}
+                </div>
+              </td>
+
+              <td className="px-4 py-3 text-right relative">
+                <DropdownMenu
+                  onEdit={() => onEdit(contact)}
+                  onDelete={() => onDelete(contact)}
+                  onNotes={() => onNotes(contact)}
+                  onTimeline={() => onTimeline(contact)}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DropdownMenu({ onEdit, onDelete, onNotes, onTimeline }) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <div className="relative inline-block text-left">
+      <button
+        onClick={() => setOpen(prev => !prev)}
+        className="p-2 rounded-full hover:bg-gray-100"
+      >
+        <FaEllipsisV size={14} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md bg-white shadow-lg border">
+          <div className="py-1 text-sm text-gray-700">
+            <button
+              onClick={onEdit}
+              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+            >
+              ✏️ Edit
+            </button>
+            <button
+              onClick={onNotes}
+              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+            >
+              📝 Notes
+            </button>
+            <button
+              onClick={onTimeline}
+              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+            >
+              🕒 Timeline
+            </button>
+            <button
+              onClick={onDelete}
+              className="block w-full px-4 py-2 text-red-600 hover:bg-red-50 text-left"
+            >
+              🗑 Delete
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\Contacts.jsx 
+====================================================== 
+ 
+import React, { useState } from "react";
+import TopBar from "./components/ContactsTopBar";
+import ContactsTable from "./components/ContactsTable";
+import ContactFormModal from "./components/ContactFormModal";
+import BulkActionsBar from "./components/BulkActionsBar";
+
+function Contacts() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1); // ✅ Added here
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const handleAddNew = () => {
+    setSelectedContact(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = contact => {
+    setSelectedContact(contact);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveComplete = () => {
+    setIsModalOpen(false);
+    setSelectedContact(null);
+    setCurrentPage(1); // ✅ Reset to page 1 on save
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleSelectionChange = ids => {
+    setSelectedIds(ids);
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <TopBar
+        onAddClick={handleAddNew}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onSearchChange={setSearchTerm}
+      />
+
+      {selectedIds.length > 0 && (
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+        />
+      )}
+
+      <ContactsTable
+        onEdit={handleEdit}
+        activeTab={activeTab}
+        refreshTrigger={refreshTrigger}
+        searchTerm={searchTerm}
+        onSelectionChange={handleSelectionChange}
+        selectedIds={selectedIds}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage} // ✅ Pass down
+      />
+
+      <ContactFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        contact={selectedContact}
+        onSaveComplete={handleSaveComplete}
+      />
+    </div>
+  );
+}
+
+export default Contacts;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\ContactsTopBar.jsx 
+====================================================== 
+ 
+// 📄 File: src/pages/Contacts/ContactsTopBar.jsx
+
+import { useState } from "react";
+import { Search, Filter, Plus } from "lucide-react";
+
+const tabs = [
+  { id: "all", label: "All Contacts", count: 266 },
+  { id: "favourites", label: "Favourites", count: 86 },
+  { id: "groups", label: "Groups", count: 23 },
+  { id: "archived", label: "Archived", count: 8 },
+];
+
+export default function ContactsTopBar({ onAdd }) {
+  const [activeTab, setActiveTab] = useState("all");
+  const [search, setSearch] = useState("");
+
+  return (
+    <div className="flex flex-col gap-4 mb-6">
+      {/* 🔍 Search + Actions */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div className="flex items-center w-full md:max-w-sm bg-white border border-gray-300 rounded-lg px-3 py-2 shadow-sm">
+          <Search size={18} className="text-gray-400 mr-2" />
+          <input
+            type="text"
+            placeholder="Search contact, group or project"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full outline-none text-sm text-gray-700"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 mt-2 md:mt-0">
+          <button className="text-sm text-gray-600 hover:text-purple-700 flex items-center gap-1 border px-3 py-2 rounded-md border-gray-300">
+            <Filter size={16} />
+            <span className="hidden sm:inline">Filter</span>
+          </button>
+          <button
+            onClick={onAdd}
+            className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-md flex items-center gap-2 shadow"
+          >
+            <Plus size={16} />
+            Add Contact
+          </button>
+        </div>
+      </div>
+
+      {/* 📁 Tabs */}
+      <div className="flex items-center gap-6 border-b border-gray-200 text-sm font-medium">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-2 border-b-2 ${
+              activeTab === tab.id
+                ? "border-purple-600 text-purple-700"
+                : "border-transparent text-gray-500 hover:text-purple-600"
+            }`}
+          >
+            {tab.label}{" "}
+            <span className="text-xs text-gray-400 ml-1">({tab.count})</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\Contacts_AllFileDump.txt 
+====================================================== 
+ 
+Folder and File Content Report
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\ContactForm.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState } from "react";
+import axiosClient from "../../api/axiosClient"; // Corrected import
+import { toast } from "react-toastify";
+
+function ContactForm({ contact, onSaveComplete }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    phoneNumber: "",
+    email: "",
+    leadSource: "",
+    notes: "",
+    tags: [], // Array of tag IDs
+    // Date fields are handled separately to avoid timezone issues
+  });
+  const [allTags, setAllTags] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch all available tags when the component mounts
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await axiosClient.get("/tags");
+        setAllTags(response.data.data || response.data); // Handle wrapper if it exists
+      } catch (error) {
+        console.error("Failed to load tags:", error);
+        toast.error("❌ Failed to load tags");
+      }
+    };
+    fetchTags();
+  }, []);
+
+  // Populate the form when an existing contact is passed in
+  useEffect(() => {
+    if (contact) {
+      setFormData({
+        name: contact.name || "",
+        phoneNumber: contact.phoneNumber || "",
+        email: contact.email || "",
+        leadSource: contact.leadSource || "",
+        notes: contact.notes || "",
+        tags: contact.tags?.map(t => t.tagId) || [],
+      });
+    }
+  }, [contact]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleTagChange = e => {
+    const selected = Array.from(e.target.selectedOptions, opt => opt.value);
+    setFormData(prev => ({ ...prev, tags: selected }));
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setSaving(true);
+
+    // Backend expects an array of Guids/strings for the tag IDs
+    const payload = {
+      ...formData,
+      tagIds: formData.tags, // Send just the array of IDs
+    };
+
+    try {
+      if (contact?.id) {
+        // Update existing contact
+        await axiosClient.put(`/contacts/${contact.id}`, payload);
+        toast.success("✅ Contact updated successfully!");
+      } else {
+        // Create new contact
+        await axiosClient.post("/contacts", payload);
+        toast.success("✅ Contact created successfully!");
+      }
+      onSaveComplete?.(); // Notify parent component to refresh/close
+    } catch (err) {
+      // Display the specific error message from the backend
+      const errorMessage =
+        err.response?.data?.message || "❌ Failed to save contact.";
+      toast.error(errorMessage);
+      console.error("Save contact failed:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        required
+        placeholder="Name"
+        className="w-full border px-3 py-2 rounded-md"
+      />
+      <input
+        name="phoneNumber"
+        value={formData.phoneNumber}
+        onChange={handleChange}
+        placeholder="Phone Number"
+        className="w-full border px-3 py-2 rounded-md"
+      />
+      <input
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        placeholder="Email"
+        className="w-full border px-3 py-2 rounded-md"
+      />
+
+      <div>
+        <label className="text-sm text-gray-600">Tags</label>
+        <select
+          multiple
+          value={formData.tags}
+          onChange={handleTagChange}
+          className="w-full border px-3 py-2 rounded-md h-24"
+        >
+          {allTags.map(tag => (
+            <option key={tag.id} value={tag.id}>
+              {tag.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <textarea
+        name="notes"
+        value={formData.notes}
+        onChange={handleChange}
+        placeholder="Notes..."
+        className="w-full border px-3 py-2 rounded-md"
+        rows={3}
+      />
+
+      <button
+        type="submit"
+        disabled={saving}
+        className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 disabled:bg-purple-300"
+      >
+        {saving ? "Saving..." : contact?.id ? "Update Contact" : "Add Contact"}
+      </button>
+    </form>
+  );
+}
+
+export default ContactForm;
+
+// import React, { useEffect, useState } from "react";
+// import axios from "axios";
+// import { toast } from "react-toastify";
+
+// function ContactForm({ contact, onSaveComplete }) {
+//   const [formData, setFormData] = useState({
+//     name: "",
+//     phoneNumber: "",
+//     email: "",
+//     leadSource: "",
+//     notes: "",
+//     lastContactedAt: "",
+//     nextFollowUpAt: "",
+//     tags: [], // Now array of tag IDs
+//   });
+
+//   const [allTags, setAllTags] = useState([]);
+
+//   useEffect(() => {
+//     // Load all tags from DB
+//     axios
+//       .get("/api/tags")
+//       .then(res => setAllTags(res.data))
+//       .catch(() => toast.error("❌ Failed to load tags"));
+//   }, []);
+
+//   useEffect(() => {
+//     if (contact) {
+//       setFormData({
+//         name: contact.name || "",
+//         phoneNumber: contact.phoneNumber || "",
+//         email: contact.email || "",
+//         leadSource: contact.leadSource || "",
+//         notes: contact.notes || "",
+//         lastContactedAt: contact.lastContactedAt || "",
+//         nextFollowUpAt: contact.nextFollowUpAt || "",
+//         tags: contact.tags?.map(t => t.tagId) || [],
+//       });
+//     }
+//   }, [contact]);
+
+//   const handleChange = e => {
+//     const { name, value } = e.target;
+//     setFormData(prev => ({ ...prev, [name]: value }));
+//   };
+
+//   const handleTagChange = e => {
+//     const selected = Array.from(e.target.selectedOptions, opt => opt.value);
+//     setFormData(prev => ({ ...prev, tags: selected }));
+//   };
+
+//   const handleSubmit = async e => {
+//     e.preventDefault();
+
+//     const mappedTags = formData.tags.map(id => {
+//       const tag = allTags.find(t => t.id === id);
+//       return { tagId: tag.id, tagName: tag.name };
+//     });
+
+//     const payload = {
+//       ...formData,
+//       tags: mappedTags,
+//     };
+
+//     try {
+//       if (contact?.id) {
+//         await axios.put(`/contacts/${contact.id}`, payload);
+//         toast.success("✅ Contact updated");
+//       } else {
+//         await axios.post("/contacts", payload);
+//         toast.success("✅ Contact added");
+//       }
+
+//       onSaveComplete?.();
+//     } catch (err) {
+//       console.error(err);
+//       toast.error("❌ Failed to save contact");
+//     }
+//   };
+
+//   return (
+//     <form onSubmit={handleSubmit} className="space-y-3">
+//       <input
+//         name="name"
+//         value={formData.name}
+//         onChange={handleChange}
+//         required
+//         placeholder="Name"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         name="phoneNumber"
+//         value={formData.phoneNumber}
+//         onChange={handleChange}
+//         required
+//         placeholder="Phone"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         name="email"
+//         value={formData.email}
+//         onChange={handleChange}
+//         placeholder="Email"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         name="leadSource"
+//         value={formData.leadSource}
+//         onChange={handleChange}
+//         placeholder="Lead Source"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+
+//       {/* ✅ Tag Select */}
+//       <select
+//         multiple
+//         value={formData.tags}
+//         onChange={handleTagChange}
+//         className="w-full border px-3 py-2 rounded"
+//       >
+//         {allTags.map(tag => (
+//           <option key={tag.id} value={tag.id}>
+//             {tag.name}
+//           </option>
+//         ))}
+//       </select>
+
+//       <input
+//         type="datetime-local"
+//         name="lastContactedAt"
+//         value={formData.lastContactedAt}
+//         onChange={handleChange}
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <input
+//         type="datetime-local"
+//         name="nextFollowUpAt"
+//         value={formData.nextFollowUpAt}
+//         onChange={handleChange}
+//         className="w-full border px-3 py-2 rounded"
+//       />
+//       <textarea
+//         name="notes"
+//         value={formData.notes}
+//         onChange={handleChange}
+//         placeholder="Notes"
+//         className="w-full border px-3 py-2 rounded"
+//       />
+
+//       <button
+//         type="submit"
+//         className="bg-purple-600 text-white px-4 py-2 rounded"
+//       >
+//         {contact?.id ? "Update Contact" : "Add Contact"}
+//       </button>
+//     </form>
+//   );
+// }
+
+// export default ContactForm;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\ContactList.jsx 
+====================================================== 
+ 
+import React from "react";
+import { FaEllipsisV } from "react-icons/fa";
+
+function getInitials(name) {
+  if (!name) return "";
+  const parts = name.trim().split(" ");
+  return parts
+    .slice(0, 2)
+    .map(word => word[0])
+    .join("")
+    .toUpperCase();
+}
+
+export default function ContactList({
+  contacts,
+  onEdit,
+  onDelete,
+  onNotes,
+  onTimeline,
+}) {
+  return (
+    <div className="overflow-x-auto mt-4 rounded-xl border shadow-sm">
+      <table className="min-w-full bg-white">
+        <thead className="text-left bg-gray-100 text-sm font-medium">
+          <tr>
+            <th className="px-4 py-3">Name</th>
+            <th className="px-4 py-3">Phone</th>
+            <th className="px-4 py-3">Tags</th>
+            <th className="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="text-sm">
+          {contacts.map(contact => (
+            <tr key={contact.id} className="border-t hover:bg-gray-50">
+              <td className="px-4 py-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shadow-sm">
+                  {getInitials(contact.name)}
+                </div>
+                <span className="font-semibold">{contact.name}</span>
+              </td>
+
+              <td className="px-4 py-3 text-gray-700">
+                {contact.phoneNumber || (
+                  <span className="text-gray-400 italic">No number</span>
+                )}
+              </td>
+
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-1">
+                  {(contact.tags ?? contact.contactTags ?? []).length > 0 ? (
+                    (contact.tags ?? contact.contactTags).map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-0.5 text-xs rounded-full font-medium"
+                        style={{
+                          backgroundColor: tag.colorHex || "#EEE",
+                          color: "#1F2937",
+                        }}
+                      >
+                        {tag.tagName || tag.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">
+                      No tags
+                    </span>
+                  )}
+                </div>
+              </td>
+
+              <td className="px-4 py-3 text-right relative">
+                <DropdownMenu
+                  onEdit={() => onEdit(contact)}
+                  onDelete={() => onDelete(contact)}
+                  onNotes={() => onNotes(contact)}
+                  onTimeline={() => onTimeline(contact)}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DropdownMenu({ onEdit, onDelete, onNotes, onTimeline }) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <div className="relative inline-block text-left">
+      <button
+        onClick={() => setOpen(prev => !prev)}
+        className="p-2 rounded-full hover:bg-gray-100"
+      >
+        <FaEllipsisV size={14} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md bg-white shadow-lg border">
+          <div className="py-1 text-sm text-gray-700">
+            <button
+              onClick={onEdit}
+              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+            >
+              ✏️ Edit
+            </button>
+            <button
+              onClick={onNotes}
+              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+            >
+              📝 Notes
+            </button>
+            <button
+              onClick={onTimeline}
+              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+            >
+              🕒 Timeline
+            </button>
+            <button
+              onClick={onDelete}
+              className="block w-full px-4 py-2 text-red-600 hover:bg-red-50 text-left"
+            >
+              🗑 Delete
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\Contacts.jsx 
+====================================================== 
+ 
+import React, { useState } from "react";
+import TopBar from "./components/ContactsTopBar";
+import ContactsTable from "./components/ContactsTable";
+import ContactFormModal from "./components/ContactFormModal";
+import BulkActionsBar from "./components/BulkActionsBar";
+
+function Contacts() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1); // ✅ Added here
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const handleAddNew = () => {
+    setSelectedContact(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = contact => {
+    setSelectedContact(contact);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveComplete = () => {
+    setIsModalOpen(false);
+    setSelectedContact(null);
+    setCurrentPage(1); // ✅ Reset to page 1 on save
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleSelectionChange = ids => {
+    setSelectedIds(ids);
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <TopBar
+        onAddClick={handleAddNew}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onSearchChange={setSearchTerm}
+      />
+
+      {selectedIds.length > 0 && (
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+        />
+      )}
+
+      <ContactsTable
+        onEdit={handleEdit}
+        activeTab={activeTab}
+        refreshTrigger={refreshTrigger}
+        searchTerm={searchTerm}
+        onSelectionChange={handleSelectionChange}
+        selectedIds={selectedIds}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage} // ✅ Pass down
+      />
+
+      <ContactFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        contact={selectedContact}
+        onSaveComplete={handleSaveComplete}
+      />
+    </div>
+  );
+}
+
+export default Contacts;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\ContactsTopBar.jsx 
+====================================================== 
+ 
+// 📄 File: src/pages/Contacts/ContactsTopBar.jsx
+
+import { useState } from "react";
+import { Search, Filter, Plus } from "lucide-react";
+
+const tabs = [
+  { id: "all", label: "All Contacts", count: 266 },
+  { id: "favourites", label: "Favourites", count: 86 },
+  { id: "groups", label: "Groups", count: 23 },
+  { id: "archived", label: "Archived", count: 8 },
+];
+
+export default function ContactsTopBar({ onAdd }) {
+  const [activeTab, setActiveTab] = useState("all");
+  const [search, setSearch] = useState("");
+
+  return (
+    <div className="flex flex-col gap-4 mb-6">
+      {/* 🔍 Search + Actions */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div className="flex items-center w-full md:max-w-sm bg-white border border-gray-300 rounded-lg px-3 py-2 shadow-sm">
+          <Search size={18} className="text-gray-400 mr-2" />
+          <input
+            type="text"
+            placeholder="Search contact, group or project"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full outline-none text-sm text-gray-700"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 mt-2 md:mt-0">
+          <button className="text-sm text-gray-600 hover:text-purple-700 flex items-center gap-1 border px-3 py-2 rounded-md border-gray-300">
+            <Filter size={16} />
+            <span className="hidden sm:inline">Filter</span>
+          </button>
+          <button
+            onClick={onAdd}
+            className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-md flex items-center gap-2 shadow"
+          >
+            <Plus size={16} />
+            Add Contact
+          </button>
+        </div>
+      </div>
+
+      {/* 📁 Tabs */}
+      <div className="flex items-center gap-6 border-b border-gray-200 text-sm font-medium">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-2 border-b-2 ${
+              activeTab === tab.id
+                ? "border-purple-600 text-purple-700"
+                : "border-transparent text-gray-500 hover:text-purple-600"
+            }`}
+          >
+            {tab.label}{" "}
+            <span className="text-xs text-gray-400 ml-1">({tab.count})</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\Contacts_AllFileDump.txt 
+====================================================== 
+ 
+Folder and File Content Report
+ 
+============================= 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\CsvUploadModal.jsx 
+====================================================== 
+ 
+import React, { useState } from "react";
+import { toast } from "react-toastify";
+import axios from "axios";
+
+// Props: isOpen (bool), onClose (fn), onUploadComplete (contacts, skipSaving)
+export default function CsvUploadModal({ isOpen, onClose, onUploadComplete }) {
+  const [file, setFile] = useState(null);
+  const [skipSaving, setSkipSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = e => {
+    setFile(e.target.files[0]);
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      toast.warn("⚠️ Please select a CSV file.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setUploading(true);
+    try {
+      const res = await axios.post("/api/contacts/parse-csv", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      const contacts = res.data;
+      if (!Array.isArray(contacts) || contacts.length === 0) {
+        toast.error("❌ No valid contacts parsed from file.");
+        return;
+      }
+
+      toast.success("✅ CSV parsed successfully!");
+      onUploadComplete(contacts, skipSaving);
+      setFile(null); // 🔁 Reset file after success
+      onClose();
+    } catch (err) {
+      console.error("❌ Upload error:", err);
+      toast.error("❌ Failed to parse CSV. Please check format.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-md space-y-4">
+        <h2 className="text-xl font-bold text-purple-700">
+          📥 Upload CSV File
+        </h2>
+
+        <input type="file" accept=".csv" onChange={handleFileChange} />
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={skipSaving}
+            onChange={e => setSkipSaving(e.target.checked)}
+          />
+          <label className="text-sm">
+            Don't save contacts to CRM (temporary)
+          </label>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpload}
+            disabled={uploading}
+            className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm"
+          >
+            {uploading ? "⏳ Uploading..." : "🚀 Upload"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\ExtrackAllFiles.bat 
+====================================================== 
+ 
+@echo off
+REM This script will find all files and output their name and content into one file.
+REM The output file will be named [FolderName]_AllFileDump.txt.
+
+REM Get the current folder's name and set it as the output file name with the custom suffix
+for %%I in ("%cd%") do set "outputFile=%%~nI_AllFileDump.txt"
+
+REM Clear the output file to start fresh
+> "%outputFile%" (echo Folder and File Content Report)
+echo. >> "%outputFile%"
+
+REM Loop through all files in the current directory and subdirectories
+for /R . %%F in (*.*) do (
+    echo ====================================================== >> "%outputFile%"
+    echo FILE: %%F >> "%outputFile%"
+    echo ====================================================== >> "%outputFile%"
+    echo. >> "%outputFile%"
+    type "%%F" >> "%outputFile%" 2>nul
+    echo. >> "%outputFile%"
+    echo. >> "%outputFile%"
+)
+
+echo Finished! All content has been extracted to %outputFile% 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\components\BulkActionsBar.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState } from "react";
+import axiosClient from "../../../api/axiosClient";
+import { toast } from "react-toastify";
+
+function BulkActionsBar({ selectedIds = [], onClearSelection, onRefresh }) {
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedTagId, setSelectedTagId] = useState("");
+
+  useEffect(() => {
+    if (selectedIds.length > 0) {
+      fetchTags();
+    }
+  }, [selectedIds.length]);
+
+  const fetchTags = async () => {
+    try {
+      const res = await axiosClient.get("/tags/get-tags");
+      setAvailableTags(res.data.data || []);
+    } catch (error) {
+      toast.error("❌ Failed to load tags");
+    }
+  };
+
+  const handleApplyTag = async () => {
+    if (!selectedTagId) {
+      toast.warn("Please select a tag first");
+      return;
+    }
+
+    try {
+      await axiosClient.post("/contacts/bulk-assign-tag", {
+        contactIds: selectedIds,
+        tagId: selectedTagId,
+      });
+
+      toast.success("✅ Tag assigned to selected contacts");
+      onClearSelection?.();
+      onRefresh?.();
+    } catch (error) {
+      const message =
+        error.response?.data?.message || "❌ Failed to assign tag";
+      toast.error(message);
+    }
+  };
+
+  if (selectedIds.length === 0) return null;
+
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 space-y-2 sm:space-y-0">
+      <p className="text-sm text-gray-700 font-medium">
+        {selectedIds.length} contact(s) selected
+      </p>
+
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        <select
+          value={selectedTagId}
+          onChange={e => setSelectedTagId(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full sm:w-56"
+        >
+          <option value="">-- Select Tag --</option>
+          {availableTags.map(tag => (
+            <option key={tag.id} value={tag.id}>
+              {tag.name}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={handleApplyTag}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm shadow-sm"
+        >
+          Apply Tag
+        </button>
+
+        <button
+          onClick={onClearSelection}
+          className="text-sm text-gray-600 hover:underline"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default BulkActionsBar;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\components\checkbox.jsx 
+====================================================== 
+ 
+// 📄 File: src/pages/Contacts/components/checkbox.jsx
+
+import React from "react";
+
+export const Checkbox = React.forwardRef(
+  ({ className = "", checked, onCheckedChange, ...props }, ref) => {
+    return (
+      <input
+        type="checkbox"
+        ref={ref}
+        checked={checked}
+        className={`w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 ${className}`}
+        {...props}
+        onChange={e => onCheckedChange?.(e.target.checked)}
+      />
+    );
+  }
+);
+
+Checkbox.displayName = "Checkbox";
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\components\ContactFormModal.jsx 
+====================================================== 
+ 
+import React, { useEffect, useState } from "react";
+import axiosClient from "../../../api/axiosClient";
+import { toast } from "react-toastify";
+
+const leadSources = [
+  "Manual",
+  "Website Form",
+  "Google Search",
+  "Facebook Ad",
+  "LinkedIn",
+  "Referral",
+  "Trade Show",
+  "Cold Call",
+  "Other",
+];
+
+function ContactFormModal({ isOpen, onClose, contact, onSaveComplete }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    phoneNumber: "",
+    email: "",
+    leadSource: "Manual",
+    notes: "",
+    tagId: "",
+  });
+  const [allTags, setAllTags] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const res = await axiosClient.get("/tags/get-tags");
+        setAllTags(res.data.data || []);
+      } catch (error) {
+        console.error("Failed to load tags:", error);
+        toast.error("❌ Failed to load tags");
+      }
+    };
+
+    if (isOpen) {
+      fetchTags();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (contact) {
+      setFormData({
+        name: contact.name || "",
+        phoneNumber: contact.phoneNumber || "",
+        email: contact.email || "",
+        leadSource: contact.leadSource || "Manual",
+        notes: contact.notes || "",
+        tagId: contact.tags?.[0]?.tagId || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        phoneNumber: "",
+        email: "",
+        leadSource: "Manual",
+        notes: "",
+        tagId: "",
+      });
+    }
+  }, [contact, isOpen]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    const payload = {
+      ...formData,
+      tagIds: formData.tagId ? [formData.tagId] : [],
+    };
+    delete payload.tagId;
+
+    try {
+      if (contact?.id) {
+        await axiosClient.put(`/contacts/${contact.id}`, payload); // Assuming PUT doesn't need "add"
+        toast.success("✅ Contact updated successfully!");
+      } else {
+        // 👇 FIX #1: Using the correct endpoint for creating a contact.
+        await axiosClient.post("/contacts/create", payload);
+        toast.success("✅ Contact created successfully!");
+      }
+      onSaveComplete?.();
+      onClose();
+    } catch (err) {
+      // 👇 FIX #2: Specific error handling for duplicate contacts.
+      if (err.response && err.response.status === 409) {
+        // 409 Conflict status means the contact already exists.
+        toast.warn(
+          err.response.data.message ||
+            "Contact with this phone number already exists."
+        );
+      } else {
+        // Handle all other errors (like 404 Not Found, 500 Server Error, etc.)
+        const errorMessage =
+          err.response?.data?.message || "❌ Failed to save contact.";
+        toast.error(errorMessage);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl relative">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-2xl"
+        >
+          &times;
+        </button>
+
+        <h2 className="text-xl font-bold mb-4">
+          {contact?.id ? "Edit Contact" : "Add New Contact"}
+        </h2>
+
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          <input
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="Full Name *"
+            required
+            className="border px-3 py-2 rounded w-full"
+          />
+          <input
+            name="phoneNumber"
+            value={formData.phoneNumber}
+            onChange={handleChange}
+            placeholder="Phone Number *"
+            required
+            className="border px-3 py-2 rounded w-full"
+          />
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Email"
+            className="border px-3 py-2 rounded w-full"
+          />
+          <select
+            name="leadSource"
+            value={formData.leadSource}
+            onChange={handleChange}
+            className="border px-3 py-2 rounded w-full"
+          >
+            {leadSources.map(source => (
+              <option key={source} value={source}>
+                {source}
+              </option>
+            ))}
+          </select>
+          <select
+            name="tagId"
+            value={formData.tagId}
+            onChange={handleChange}
+            className="md:col-span-2 border px-3 py-2 rounded w-full"
+          >
+            <option value="">-- No Tag --</option>
+            {allTags.map(tag => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            placeholder="Notes..."
+            className="md:col-span-2 border px-3 py-2 rounded w-full min-h-[80px]"
+          ></textarea>
+          <div className="md:col-span-2 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-200 text-gray-800 px-6 py-2 rounded hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:bg-purple-300"
+            >
+              {isSaving
+                ? "Saving..."
+                : contact?.id
+                ? "Update Contact"
+                : "Add Contact"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default ContactFormModal;
+
+// import React, { useEffect, useState } from "react";
+// import axiosClient from "../../../api/axiosClient";
+// import { toast } from "react-toastify";
+
+// // 👇 FIX #1: Define the list of lead sources.
+// const leadSources = [
+//   "Manual",
+//   "Website Form",
+//   "Google Search",
+//   "Facebook Ad",
+//   "LinkedIn",
+//   "Referral",
+//   "Trade Show",
+//   "Cold Call",
+//   "Other",
+// ];
+
+// function ContactFormModal({ isOpen, onClose, contact, onSaveComplete }) {
+//   const [formData, setFormData] = useState({
+//     name: "",
+//     phoneNumber: "",
+//     email: "",
+//     // 👇 FIX #2: Set the default leadSource to "Manual".
+//     leadSource: "Manual",
+//     notes: "",
+//     tagId: "",
+//   });
+//   const [allTags, setAllTags] = useState([]);
+//   const [isSaving, setIsSaving] = useState(false);
+
+//   useEffect(() => {
+//     const fetchTags = async () => {
+//       try {
+//         const res = await axiosClient.get("/tags/get-tags");
+//         setAllTags(res.data.data || []);
+//       } catch (error) {
+//         console.error("Failed to load tags:", error);
+//         toast.error("❌ Failed to load tags");
+//       }
+//     };
+
+//     if (isOpen) {
+//       fetchTags();
+//     }
+//   }, [isOpen]);
+
+//   useEffect(() => {
+//     if (contact) {
+//       setFormData({
+//         name: contact.name || "",
+//         phoneNumber: contact.phoneNumber || "",
+//         email: contact.email || "",
+//         leadSource: contact.leadSource || "Manual",
+//         notes: contact.notes || "",
+//         tagId: contact.tags?.[0]?.tagId || "",
+//       });
+//     } else {
+//       // Reset form for a new contact
+//       setFormData({
+//         name: "",
+//         phoneNumber: "",
+//         email: "",
+//         leadSource: "Manual",
+//         notes: "",
+//         tagId: "",
+//       });
+//     }
+//   }, [contact, isOpen]);
+
+//   const handleChange = e => {
+//     const { name, value } = e.target;
+//     setFormData(prev => ({ ...prev, [name]: value }));
+//   };
+
+//   const handleSubmit = async e => {
+//     e.preventDefault();
+//     setIsSaving(true);
+
+//     const payload = {
+//       ...formData,
+//       tagIds: formData.tagId ? [formData.tagId] : [],
+//     };
+//     delete payload.tagId;
+
+//     try {
+//       if (contact?.id) {
+//         await axiosClient.put(`/contacts/add/${contact.id}`, payload);
+//         toast.success("✅ Contact updated successfully!");
+//       } else {
+//         await axiosClient.post("/contacts", payload);
+//         toast.success("✅ Contact created successfully!");
+//       }
+//       onSaveComplete?.();
+//       onClose();
+//     } catch (err) {
+//       const errorMessage =
+//         err.response?.data?.message || "❌ Failed to save contact.";
+//       toast.error(errorMessage);
+//     } finally {
+//       setIsSaving(false);
+//     }
+//   };
+
+//   if (!isOpen) return null;
+
+//   return (
+//     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
+//       <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl relative">
+//         <button
+//           onClick={onClose}
+//           className="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-2xl"
+//         >
+//           &times;
+//         </button>
+
+//         <h2 className="text-xl font-bold mb-4">
+//           {contact?.id ? "Edit Contact" : "Add New Contact"}
+//         </h2>
+
+//         <form
+//           onSubmit={handleSubmit}
+//           className="grid grid-cols-1 md:grid-cols-2 gap-4"
+//         >
+//           <input
+//             name="name"
+//             value={formData.name}
+//             onChange={handleChange}
+//             placeholder="Full Name *"
+//             required
+//             className="border px-3 py-2 rounded w-full"
+//           />
+//           <input
+//             name="phoneNumber"
+//             value={formData.phoneNumber}
+//             onChange={handleChange}
+//             placeholder="Phone Number *"
+//             required
+//             className="border px-3 py-2 rounded w-full"
+//           />
+//           <input
+//             type="email"
+//             name="email"
+//             value={formData.email}
+//             onChange={handleChange}
+//             placeholder="Email"
+//             className="border px-3 py-2 rounded w-full"
+//           />
+
+//           {/* 👇 FIX #3: Replaced the text input with a select dropdown. */}
+//           <select
+//             name="leadSource"
+//             value={formData.leadSource}
+//             onChange={handleChange}
+//             className="border px-3 py-2 rounded w-full"
+//           >
+//             {leadSources.map(source => (
+//               <option key={source} value={source}>
+//                 {source}
+//               </option>
+//             ))}
+//           </select>
+
+//           <select
+//             name="tagId"
+//             value={formData.tagId}
+//             onChange={handleChange}
+//             className="md:col-span-2 border px-3 py-2 rounded w-full"
+//           >
+//             <option value="">-- No Tag --</option>
+//             {allTags.map(tag => (
+//               <option key={tag.id} value={tag.id}>
+//                 {tag.name}
+//               </option>
+//             ))}
+//           </select>
+
+//           <textarea
+//             name="notes"
+//             value={formData.notes}
+//             onChange={handleChange}
+//             placeholder="Notes..."
+//             className="md:col-span-2 border px-3 py-2 rounded w-full min-h-[80px]"
+//           ></textarea>
+
+//           <div className="md:col-span-2 flex justify-end gap-3">
+//             <button
+//               type="button"
+//               onClick={onClose}
+//               className="bg-gray-200 text-gray-800 px-6 py-2 rounded hover:bg-gray-300"
+//             >
+//               Cancel
+//             </button>
+//             <button
+//               type="submit"
+//               disabled={isSaving}
+//               className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:bg-purple-300"
+//             >
+//               {isSaving
+//                 ? "Saving..."
+//                 : contact?.id
+//                 ? "Update Contact"
+//                 : "Add Contact"}
+//             </button>
+//           </div>
+//         </form>
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default ContactFormModal;
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\components\ContactsTable.jsx 
+====================================================== 
+ 
+// 📄 File: src/pages/Contacts/components/ContactsTable.jsx
+import React, { useEffect, useState, useCallback } from "react";
+import axiosClient from "../../../api/axiosClient";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { Checkbox } from "./checkbox";
+import { MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./dropdown-menu";
+
+function getInitials(name) {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map(w => w[0])
+    .join(" ")
+    .toUpperCase();
+}
+
+export default function ContactsTable({
+  onEdit,
+  refreshTrigger,
+  activeTab,
+  onSelectionChange,
+  searchTerm,
+  currentPage,
+  setCurrentPage,
+}) {
+  const [contacts, setContacts] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const pageSize = 20;
+  const navigate = useNavigate();
+
+  const fetchContacts = useCallback(async () => {
+    try {
+      const res = await axiosClient.get("/contacts/", {
+        params: {
+          tab: activeTab,
+          search: searchTerm,
+          page: currentPage,
+          pageSize,
+        },
+      });
+
+      const result = res.data.data;
+
+      // 👇 THE FIX IS HERE 👇
+      // The contacts are in `result.items`, not `result.records`.
+      setContacts(Array.isArray(result?.items) ? result.items : []);
+
+      // Also, handle the potentially incorrect totalPages from the backend.
+      const total = result?.totalPages > 0 ? result.totalPages : 1;
+      setTotalPages(total);
+    } catch (err) {
+      const message =
+        err.response?.data?.message || "❌ Failed to load contacts";
+      toast.error(message);
+    }
+  }, [activeTab, searchTerm, currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchContacts();
+  }, [refreshTrigger, activeTab, searchTerm, currentPage, fetchContacts]);
+
+  const handleSelectAll = checked => {
+    const ids = checked ? contacts.map(c => c.id) : [];
+    setSelectedIds(ids);
+    onSelectionChange?.(ids);
+  };
+
+  const handleRowCheckbox = (checked, id) => {
+    const updated = checked
+      ? [...selectedIds, id]
+      : selectedIds.filter(i => i !== id);
+    setSelectedIds(updated);
+    onSelectionChange?.(updated);
+  };
+
+  const handleDelete = async id => {
+    if (!window.confirm("Are you sure you want to delete this contact?"))
+      return;
+    try {
+      await axiosClient.delete(`/contacts/${id}`);
+      toast.success("✅ Contact deleted");
+      fetchContacts();
+    } catch (err) {
+      const message =
+        err.response?.data?.message || "❌ Failed to delete contact";
+      toast.error(message);
+    }
+  };
+
+  return (
+    <div className="overflow-x-auto rounded-lg border shadow-sm">
+      <table className="w-full text-sm text-gray-700">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="px-4 py-2 text-center w-6 border-b border-gray-200">
+              <Checkbox
+                checked={
+                  contacts.length > 0 && selectedIds.length === contacts.length
+                }
+                onCheckedChange={handleSelectAll}
+                className="w-4 h-4"
+              />
+            </th>
+            <th className="px-4 py-2 text-left border-b border-gray-200 font-medium">
+              Name
+            </th>
+            <th className="px-4 py-2 text-left border-b border-gray-200 font-medium">
+              Phone
+            </th>
+            <th className="px-4 py-2 text-left border-b border-gray-200 font-medium hidden md:table-cell">
+              Email
+            </th>
+
+            <th className="px-4 py-2 text-left border-b border-gray-200 font-medium hidden lg:table-cell">
+              Created
+            </th>
+            <th className="px-4 py-2 text-center w-8 border-b border-gray-200 font-medium">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {contacts.map(contact => (
+            <tr key={contact.id} className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-center">
+                <Checkbox
+                  checked={selectedIds.includes(contact.id)}
+                  onCheckedChange={checked =>
+                    handleRowCheckbox(checked, contact.id)
+                  }
+                  className="w-4 h-4"
+                />
+              </td>
+              <td className="px-4 py-2 flex items-center gap-4">
+                <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs">
+                  {getInitials(contact.name)}
+                </div>
+                <span className="font-medium truncate">{contact.name}</span>
+              </td>
+
+              <td className="px-4 py-2 truncate">{contact.phoneNumber}</td>
+              <td className="px-4 py-2 hidden md:table-cell truncate">
+                {contact.email || "—"}
+              </td>
+              <td className="px-4 py-2 hidden lg:table-cell truncate">
+                {new Date(contact.createdAt).toLocaleDateString()}
+              </td>
+              <td className="px-4 py-2 text-center">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-1 rounded hover:bg-gray-200 focus:outline-none">
+                      <MoreVertical size={16} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-36 rounded shadow-lg border bg-white">
+                    <DropdownMenuItem
+                      onClick={() => onEdit(contact)}
+                      className="px-3 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      ✏️ Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleDelete(contact.id)}
+                      className="px-3 py-2 hover:bg-red-50 text-red-600 text-xs"
+                    >
+                      🗑️ Delete
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        navigate(`/dashboard/contacts/${contact.id}/notes`)
+                      }
+                      className="px-3 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      📝 Notes
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Pagination Controls */}
+      <div className="flex justify-end items-center gap-3 px-4 py-3 text-sm text-gray-700">
+        <button
+          onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+        >
+          Prev
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// import React, { useEffect, useState, useCallback } from "react";
+// import axiosClient from "../../../api/axiosClient";
+// import { useNavigate } from "react-router-dom";
+// import { toast } from "react-toastify";
+// import { Checkbox } from "./checkbox";
+// import { MoreVertical } from "lucide-react";
+// import {
+//   DropdownMenu,
+//   DropdownMenuTrigger,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+// } from "./dropdown-menu";
+
+// function getInitials(name) {
+//   if (!name) return "";
+//   return name
+//     .split(" ")
+//     .slice(0, 2)
+//     .map(w => w[0])
+//     .join(" ")
+//     .toUpperCase();
+// }
+
+// export default function ContactsTable({
+//   onEdit,
+//   refreshTrigger,
+//   activeTab,
+//   onSelectionChange,
+//   searchTerm,
+//   currentPage,
+//   setCurrentPage,
+// }) {
+//   const [contacts, setContacts] = useState([]);
+//   const [selectedIds, setSelectedIds] = useState([]);
+//   const pageSize = 20;
+//   const navigate = useNavigate();
+
+//   // 🟢 useCallback so it's safe to add as dependency
+//   const fetchContacts = useCallback(async () => {
+//     try {
+//       const res = await axiosClient.get("/contacts", {
+//         params: { tab: activeTab, search: searchTerm },
+//       });
+//       const result = res.data;
+//       const records = Array.isArray(result?.records) ? result.records : [];
+//       setContacts(records);
+//     } catch {
+//       toast.error("❌ Failed to load contacts");
+//     }
+//   }, [activeTab, searchTerm]);
+
+//   useEffect(() => {
+//     fetchContacts();
+//   }, [refreshTrigger, activeTab, searchTerm, fetchContacts]);
+
+//   const handleSelectAll = checked => {
+//     const ids = checked ? pagedContacts.map(c => c.id) : [];
+//     setSelectedIds(ids);
+//     onSelectionChange?.(ids);
+//   };
+
+//   const handleRowCheckbox = (checked, id) => {
+//     const updated = checked
+//       ? [...selectedIds, id]
+//       : selectedIds.filter(i => i !== id);
+//     setSelectedIds(updated);
+//     onSelectionChange?.(updated);
+//   };
+
+//   const handleDelete = async id => {
+//     if (!window.confirm("Are you sure you want to delete this contact?"))
+//       return;
+//     try {
+//       await axiosClient.delete(`/contacts/${id}`);
+//       toast.success("✅ Contact deleted");
+//       fetchContacts();
+//     } catch {
+//       toast.error("❌ Failed to delete contact");
+//     }
+//   };
+
+//   const filtered = contacts.filter(c =>
+//     c.name.toLowerCase().includes(searchTerm.toLowerCase())
+//   );
+//   const sorted = [...filtered].sort(
+//     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//   );
+//   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+//   const pagedContacts = sorted.slice(
+//     (currentPage - 1) * pageSize,
+//     currentPage * pageSize
+//   );
+
+//   return (
+//     <div className="overflow-x-auto rounded-lg border shadow-sm">
+//       <table className="w-full text-sm text-gray-700">
+//         <thead className="bg-gray-100">
+//           <tr>
+//             <th className="px-4 py-2 text-center w-6 border-b border-gray-200">
+//               <Checkbox
+//                 checked={
+//                   pagedContacts.length > 0 &&
+//                   selectedIds.length === pagedContacts.length
+//                 }
+//                 onCheckedChange={handleSelectAll}
+//                 className="w-4 h-4"
+//               />
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium">
+//               Name
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium hidden md:table-cell">
+//               Email
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium">
+//               Phone
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium hidden lg:table-cell">
+//               Created
+//             </th>
+//             <th className="px-4 py-2 text-center w-8 border-b border-gray-200 font-medium">
+//               Actions
+//             </th>
+//           </tr>
+//         </thead>
+//         <tbody className="bg-white divide-y divide-gray-200">
+//           {pagedContacts.map(contact => (
+//             <tr key={contact.id} className="hover:bg-gray-50">
+//               <td className="px-4 py-2 text-center">
+//                 <Checkbox
+//                   checked={selectedIds.includes(contact.id)}
+//                   onCheckedChange={checked =>
+//                     handleRowCheckbox(checked, contact.id)
+//                   }
+//                   className="w-4 h-4"
+//                 />
+//               </td>
+//               <td className="px-4 py-2 flex items-center gap-4">
+//                 <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs">
+//                   {getInitials(contact.name)}
+//                 </div>
+//                 <span className="font-medium truncate">{contact.name}</span>
+//               </td>
+//               <td className="px-4 py-2 hidden md:table-cell truncate">
+//                 {contact.email || "—"}
+//               </td>
+//               <td className="px-4 py-2 truncate">{contact.phoneNumber}</td>
+//               <td className="px-4 py-2 hidden lg:table-cell truncate">
+//                 {new Date(contact.createdAt).toLocaleDateString()}
+//               </td>
+//               <td className="px-4 py-2 text-center">
+//                 <DropdownMenu>
+//                   <DropdownMenuTrigger asChild>
+//                     <button className="p-1 rounded hover:bg-gray-200 focus:outline-none">
+//                       <MoreVertical size={16} />
+//                     </button>
+//                   </DropdownMenuTrigger>
+//                   <DropdownMenuContent className="w-36 rounded shadow-lg border bg-white">
+//                     <DropdownMenuItem
+//                       onClick={() => onEdit(contact)}
+//                       className="px-3 py-2 hover:bg-gray-100 text-xs"
+//                     >
+//                       ✏️ Edit
+//                     </DropdownMenuItem>
+//                     <DropdownMenuItem
+//                       onClick={() => handleDelete(contact.id)}
+//                       className="px-3 py-2 hover:bg-red-50 text-red-600 text-xs"
+//                     >
+//                       🗑️ Delete
+//                     </DropdownMenuItem>
+//                     <DropdownMenuItem
+//                       onClick={() =>
+//                         navigate(`/dashboard/contacts/${contact.id}/notes`)
+//                       }
+//                       className="px-3 py-2 hover:bg-gray-100 text-xs"
+//                     >
+//                       📝 Notes
+//                     </DropdownMenuItem>
+//                   </DropdownMenuContent>
+//                 </DropdownMenu>
+//               </td>
+//             </tr>
+//           ))}
+//         </tbody>
+//       </table>
+
+//       {/* Pagination Controls */}
+//       <div className="flex justify-end items-center gap-3 px-4 py-3 text-sm text-gray-700">
+//         <button
+//           onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+//           disabled={currentPage === 1}
+//           className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+//         >
+//           Prev
+//         </button>
+//         <span>
+//           Page {currentPage} of {totalPages}
+//         </span>
+//         <button
+//           onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+//           disabled={currentPage === totalPages}
+//           className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+//         >
+//           Next
+//         </button>
+//       </div>
+//     </div>
+//   );
+// }
+
+// import React, { useEffect, useState } from "react";
+// import axiosClient from "../../../api/axiosClient";
+// import { useNavigate } from "react-router-dom";
+// import { toast } from "react-toastify";
+// import { Checkbox } from "./checkbox";
+// import { MoreVertical } from "lucide-react";
+// import {
+//   DropdownMenu,
+//   DropdownMenuTrigger,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+// } from "./dropdown-menu";
+
+// function getInitials(name) {
+//   if (!name) return "";
+//   return name
+//     .split(" ")
+//     .slice(0, 2)
+//     .map(w => w[0])
+//     .join(" ")
+//     .toUpperCase();
+// }
+
+// export default function ContactsTable({
+//   onEdit,
+//   refreshTrigger,
+//   activeTab,
+//   onSelectionChange,
+//   searchTerm,
+//   currentPage,
+//   setCurrentPage,
+// }) {
+//   const [contacts, setContacts] = useState([]);
+//   const [selectedIds, setSelectedIds] = useState([]);
+//   const pageSize = 20;
+//   const navigate = useNavigate();
+
+//   useEffect(() => {
+//     fetchContacts();
+//   }, [refreshTrigger, activeTab, searchTerm]);
+
+//   const fetchContacts = async () => {
+//     try {
+//       const res = await axiosClient.get("/contacts", {
+//         params: { tab: activeTab, search: searchTerm },
+//       });
+//       const result = res.data;
+//       const records = Array.isArray(result?.records) ? result.records : [];
+//       setContacts(records);
+//     } catch {
+//       toast.error("❌ Failed to load contacts");
+//     }
+//   };
+
+//   const handleSelectAll = checked => {
+//     const ids = checked ? pagedContacts.map(c => c.id) : [];
+//     setSelectedIds(ids);
+//     onSelectionChange?.(ids);
+//   };
+
+//   const handleRowCheckbox = (checked, id) => {
+//     const updated = checked
+//       ? [...selectedIds, id]
+//       : selectedIds.filter(i => i !== id);
+//     setSelectedIds(updated);
+//     onSelectionChange?.(updated);
+//   };
+
+//   const handleDelete = async id => {
+//     if (!window.confirm("Are you sure you want to delete this contact?"))
+//       return;
+//     try {
+//       await axiosClient.delete(`/contacts/${id}`);
+//       toast.success("✅ Contact deleted");
+//       fetchContacts();
+//     } catch {
+//       toast.error("❌ Failed to delete contact");
+//     }
+//   };
+
+//   const filtered = contacts.filter(c =>
+//     c.name.toLowerCase().includes(searchTerm.toLowerCase())
+//   );
+//   const sorted = [...filtered].sort(
+//     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//   );
+//   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+//   const pagedContacts = sorted.slice(
+//     (currentPage - 1) * pageSize,
+//     currentPage * pageSize
+//   );
+
+//   return (
+//     <div className="overflow-x-auto rounded-lg border shadow-sm">
+//       <table className="w-full text-sm text-gray-700">
+//         <thead className="bg-gray-100">
+//           <tr>
+//             <th className="px-4 py-2 text-center w-6 border-b border-gray-200">
+//               <Checkbox
+//                 checked={
+//                   pagedContacts.length > 0 &&
+//                   selectedIds.length === pagedContacts.length
+//                 }
+//                 onCheckedChange={handleSelectAll}
+//                 className="w-4 h-4"
+//               />
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium">
+//               Name
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium hidden md:table-cell">
+//               Email
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium">
+//               Phone
+//             </th>
+//             <th className="px-4 py-2 text-left border-b border-gray-200 font-medium hidden lg:table-cell">
+//               Created
+//             </th>
+//             <th className="px-4 py-2 text-center w-8 border-b border-gray-200 font-medium">
+//               Actions
+//             </th>
+//           </tr>
+//         </thead>
+//         <tbody className="bg-white divide-y divide-gray-200">
+//           {pagedContacts.map(contact => (
+//             <tr key={contact.id} className="hover:bg-gray-50">
+//               <td className="px-4 py-2 text-center">
+//                 <Checkbox
+//                   checked={selectedIds.includes(contact.id)}
+//                   onCheckedChange={checked =>
+//                     handleRowCheckbox(checked, contact.id)
+//                   }
+//                   className="w-4 h-4"
+//                 />
+//               </td>
+//               <td className="px-4 py-2 flex items-center gap-4">
+//                 <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs">
+//                   {getInitials(contact.name)}
+//                 </div>
+//                 <span className="font-medium truncate">{contact.name}</span>
+//               </td>
+//               <td className="px-4 py-2 hidden md:table-cell truncate">
+//                 {contact.email || "—"}
+//               </td>
+//               <td className="px-4 py-2 truncate">{contact.phoneNumber}</td>
+//               <td className="px-4 py-2 hidden lg:table-cell truncate">
+//                 {new Date(contact.createdAt).toLocaleDateString()}
+//               </td>
+//               <td className="px-4 py-2 text-center">
+//                 <DropdownMenu>
+//                   <DropdownMenuTrigger asChild>
+//                     <button className="p-1 rounded hover:bg-gray-200 focus:outline-none">
+//                       <MoreVertical size={16} />
+//                     </button>
+//                   </DropdownMenuTrigger>
+//                   <DropdownMenuContent className="w-36 rounded shadow-lg border bg-white">
+//                     <DropdownMenuItem
+//                       onClick={() => onEdit(contact)}
+//                       className="px-3 py-2 hover:bg-gray-100 text-xs"
+//                     >
+//                       ✏️ Edit
+//                     </DropdownMenuItem>
+//                     <DropdownMenuItem
+//                       onClick={() => handleDelete(contact.id)}
+//                       className="px-3 py-2 hover:bg-red-50 text-red-600 text-xs"
+//                     >
+//                       🗑️ Delete
+//                     </DropdownMenuItem>
+//                     <DropdownMenuItem
+//                       onClick={() =>
+//                         navigate(`/dashboard/contacts/${contact.id}/notes`)
+//                       }
+//                       className="px-3 py-2 hover:bg-gray-100 text-xs"
+//                     >
+//                       📝 Notes
+//                     </DropdownMenuItem>
+//                   </DropdownMenuContent>
+//                 </DropdownMenu>
+//               </td>
+//             </tr>
+//           ))}
+//         </tbody>
+//       </table>
+
+//       {/* Pagination Controls */}
+//       <div className="flex justify-end items-center gap-3 px-4 py-3 text-sm text-gray-700">
+//         <button
+//           onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+//           disabled={currentPage === 1}
+//           className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+//         >
+//           Prev
+//         </button>
+//         <span>
+//           Page {currentPage} of {totalPages}
+//         </span>
+//         <button
+//           onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+//           disabled={currentPage === totalPages}
+//           className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+//         >
+//           Next
+//         </button>
+//       </div>
+//     </div>
+//   );
+// }
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\components\ContactsTopBar.jsx 
+====================================================== 
+ 
+// 📄 File: src/pages/Contacts/components/ContactsTopBar.jsx
+import { Search, Plus, SlidersHorizontal } from "lucide-react";
+
+export default function ContactsTopBar({
+  onAddClick,
+  onSearchChange,
+  activeTab,
+  onTabChange,
+  searchTerm,
+  onFilterClick,
+}) {
+  const tabs = [
+    { key: "all", label: "All" },
+    { key: "favourites", label: "Favourites" },
+    { key: "archived", label: "Archived" },
+    { key: "groups", label: "Groups" },
+  ];
+
+  return (
+    <div className="space-y-3">
+      {/* 🔍 Search + Buttons */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b pb-4">
+        <div className="flex items-center gap-2 flex-1">
+          <Search size={18} className="text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search contacts..."
+            value={searchTerm}
+            onChange={e => onSearchChange?.(e.target.value)}
+            className="w-full md:max-w-xs border border-gray-300 rounded-md px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onFilterClick}
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm border text-gray-600 border-gray-300 hover:bg-gray-100"
+          >
+            <SlidersHorizontal size={16} /> Filter
+          </button>
+          <button
+            onClick={onAddClick}
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+          >
+            <Plus size={16} /> Add Contact
+          </button>
+        </div>
+      </div>
+
+      {/* 🧭 Tab Navigation */}
+      <div className="flex gap-3 border-b text-sm font-medium">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => onTabChange?.(tab.key)}
+            className={`px-3 py-2 border-b-2 transition-all duration-150 ${
+              activeTab === tab.key
+                ? "border-purple-600 text-purple-600"
+                : "border-transparent text-gray-500 hover:text-black"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+ 
+ 
+====================================================== 
+FILE: D:\xbytechat\xbytechat-ui\src\pages\Contacts\components\dropdown-menu.jsx 
+====================================================== 
+ 
+// 📄 File: src/pages/Contacts/components/dropdown-menu.jsx
+import {
+  Menu,
+  MenuButton,
+  MenuItems,
+  MenuItem,
+  Transition,
+} from "@headlessui/react";
+import { Fragment } from "react";
+
+export function DropdownMenu({ children }) {
+  return (
+    <Menu as="div" className="relative inline-block text-left">
+      {children}
+    </Menu>
+  );
+}
+
+export const DropdownMenuTrigger = ({ asChild, children }) => (
+  <MenuButton as={Fragment}>{children}</MenuButton>
+);
+
+export const DropdownMenuContent = ({ children, className = "" }) => (
+  <Transition
+    as={Fragment}
+    enter="transition ease-out duration-100"
+    enterFrom="transform opacity-0 scale-95"
+    enterTo="transform opacity-100 scale-100"
+    leave="transition ease-in duration-75"
+    leaveFrom="transform opacity-100 scale-100"
+    leaveTo="transform opacity-0 scale-95"
+  >
+    <MenuItems
+      className={`absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none ${className}`}
+    >
+      {children}
+    </MenuItems>
+  </Transition>
+);
+
+export const DropdownMenuItem = ({ children, onClick, className = "" }) => (
+  <MenuItem>
+    {({ active }) => (
+      <button
+        onClick={onClick}
+        className={`${
+          active ? "bg-gray-100" : ""
+        } w-full px-4 py-2 text-sm text-left ${className}`}
+      >
+        {children}
+      </button>
+    )}
+  </MenuItem>
+);
+
+// // 📄 File: src/pages/Contacts/components/dropdown-menu.jsx
+// import {
+//   Menu,
+//   MenuButton,
+//   MenuItems,
+//   MenuItem,
+//   Transition,
+// } from "@headlessui/react";
+// import { Fragment } from "react";
+
+// export function DropdownMenu({ children }) {
+//   return (
+//     <Menu as="div" className="relative inline-block text-left">
+//       {children}
+//     </Menu>
+//   );
+// }
+
+// export const DropdownMenuTrigger = ({ asChild, children }) => (
+//   <MenuButton as={Fragment}>{children}</MenuButton>
+// );
+
+// export const DropdownMenuContent = ({ children, className = "" }) => (
+//   <Transition
+//     as={Fragment}
+//     enter="transition ease-out duration-100"
+//     enterFrom="transform opacity-0 scale-95"
+//     enterTo="transform opacity-100 scale-100"
+//     leave="transition ease-in duration-75"
+//     leaveFrom="transform opacity-100 scale-100"
+//     leaveTo="transform opacity-0 scale-95"
+//   >
+//     <MenuItems
+//       className={`absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none ${className}`}
+//     >
+//       {children}
+//     </MenuItems>
+//   </Transition>
+// );
+
+// export const DropdownMenuItem = ({ children, onClick, className = "" }) => (
+//   <MenuItem>
+//     {({ active }) => (
+//       <button
+//         onClick={onClick}
+//         className={`${
+//           active ? "bg-gray-100" : ""
+//         } w-full px-4 py-2 text-sm text-left ${className}`}
+//       >
+//         {children}
+//       </button>
+//     )}
+//   </MenuItem>
+// );
+ 
+ 

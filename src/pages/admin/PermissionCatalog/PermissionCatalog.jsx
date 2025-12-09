@@ -1,0 +1,14 @@
+// 📄 src/pages/admin/PermissionCatalog/PermissionCatalog.jsx
+import React from "react";
+
+export default function PermissionCatalog() {
+  return (
+    <div className="p-6">
+      <h1 className="text-xl font-semibold mb-2">Permission Catalog</h1>
+      <p className="text-sm text-gray-600">
+        Placeholder page. We’ll list all master permissions here with search,
+        groups, and bulk actions.
+      </p>
+    </div>
+  );
+}
