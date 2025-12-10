@@ -7,11 +7,15 @@ export const getAllPermissions = () => axiosClient.get("/permissions");
 
 // Grouped list – tolerant to different backend routes,
 // but still returns a plain array for the UI.
+// 📄 src/api/permissions.js
+
+// Grouped list – tolerant to different backend routes,
+// but still returns a plain array for the UI.
 export const getGroupedPermissions = async () => {
   const paths = [
     "/permission/grouped",
     "/Permission/grouped",
-    "/api/Permission/grouped", // legacy, if your backend still uses this
+    // "/api/Permission/grouped", // ❌ no longer valid with baseURL ending /api
   ];
 
   let lastErr;
@@ -20,15 +24,10 @@ export const getGroupedPermissions = async () => {
     try {
       const res = await axiosClient.get(p);
 
-      // Normalize to "array of groups"
       const data = res?.data;
       if (Array.isArray(data?.data)) return data.data;
       if (Array.isArray(data)) return data;
-
-      // Some backends might return { groups: [...] }
       if (Array.isArray(data?.groups)) return data.groups;
-
-      // If the whole response is already an array
       if (Array.isArray(res)) return res;
 
       return [];
@@ -36,9 +35,9 @@ export const getGroupedPermissions = async () => {
       const status = err?.response?.status;
       if (status === 404 || status === 405) {
         lastErr = err;
-        continue; // try next path
+        continue;
       }
-      throw err; // real error, stop
+      throw err;
     }
   }
 

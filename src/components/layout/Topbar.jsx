@@ -184,7 +184,7 @@ export default function Topbar({ collapsed, setCollapsed }) {
             {/* Upgrade Button */}
             {showUpgrade && (
               <button
-                onClick={() => navigate("/app/upgrade")}
+                onClick={() => navigate("/app/settings/billing")}
                 className="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm hover:from-emerald-600 hover:to-emerald-700 hover:shadow-md transition-all duration-200"
                 title="Upgrade your plan"
               >
