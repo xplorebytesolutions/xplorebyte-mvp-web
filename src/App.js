@@ -165,7 +165,7 @@ function App() {
             <Route path="billing/checkout" element={<Checkout />} />
             <Route path="upgrade" element={<UpgradePlanPage />} />
 
-            <Route path="billing" element={<BillingPage />} />
+            <Route path="settings/billing" element={<BillingPage />} />
             <Route path="preview-test" element={<PreviewTest />} />
 
             {/* ===== Core Workspaces ===== */}
